@@ -42,6 +42,9 @@ struct ppsdev {
     spinlock_t lock;
 };
 
+// Simulation
+#include "jtag.c"
+
 /* Only the following IOCTLs are used by
  * the ppdev driver
  *
@@ -70,8 +73,9 @@ static void ppsim_write_data(struct parport *dev, unsigned char d)
     if(pp->cable->tdi_data)
         tdi = pp->tdi = !!(d & pp->cable->tdi_data);
     // Don't write TDO
+    jtag_sim(pp);
     spin_unlock(&pp->lock);
-    printk(KERN_INFO "ppsim dwrite(%02x) TMS=%d TCK=%d TDI=%d\n", (unsigned)d, tms, tck, tdi);
+//    printk(KERN_INFO "ppsim dwrite(%02x) TMS=%d TCK=%d TDI=%d\n", (unsigned)d, tms, tck, tdi);
 }
 static void ppsim_write_control(struct parport *dev, unsigned char d)
 {
@@ -90,8 +94,9 @@ static void ppsim_write_control(struct parport *dev, unsigned char d)
         tck = pp->tck = !!(d & pp->cable->tck_ctrl);
     if(pp->cable->tdi_ctrl)
         tdi = pp->tdi = !!(d & pp->cable->tdi_ctrl);
+    jtag_sim(pp);
     spin_unlock(&pp->lock);
-    printk(KERN_INFO "ppsim cwrite(%02x) TMS=%d TCK=%d TDI=%d\n", (unsigned)d, tms, tck, tdi);
+//    printk(KERN_INFO "ppsim cwrite(%02x) TMS=%d TCK=%d TDI=%d\n", (unsigned)d, tms, tck, tdi);
 }
 
 static unsigned char ppsim_read_data(struct parport *dev)
@@ -110,8 +115,8 @@ static unsigned char ppsim_read_data(struct parport *dev)
     ret |= pp->tdo ? pp->cable->tdo_data : 0;
     tdo = pp->tdo;
     spin_unlock(&pp->lock);
-    if(pp->cable->tdo_data)
-        printk(KERN_INFO "ppsim dread(%02x) TDO=%d\n", (unsigned)ret, tdo);
+ //   if(pp->cable->tdo_data)
+ //       printk(KERN_INFO "ppsim dread(%02x) TDO=%d\n", (unsigned)ret, tdo);
     return ret;
 }
 
@@ -146,8 +151,8 @@ static unsigned char ppsim_read_status(struct parport *dev)
     tdo = pp->tdo;
     spin_unlock(&pp->lock);
     ret ^= 0x80; // BUSY line is hardware inverted
-    if(pp->cable->tdo_sts)
-        printk(KERN_INFO "ppsim sread(%02x) TDO=%d\n", (unsigned)ret, tdo);
+//    if(pp->cable->tdo_sts)
+//        printk(KERN_INFO "ppsim sread(%02x) TDO=%d\n", (unsigned)ret, tdo);
     return ret;
 }
 
