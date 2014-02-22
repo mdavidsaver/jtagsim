@@ -32,7 +32,7 @@ void jtag_sim(struct ppsdev *port)
 
     static u16 IR = 0xffff;
     static u8  DR_len = 1;
-    static u32 DR_IDCODE = myidcode;
+    static u32 DR_IDCODE;
     static u32 DR_BYPASS = 0; // only 1 bit used
     static u32 DR_BSR = 0; // EXTEST and SAMPLE
     static u32 DR_UNKNOWN = 0;
