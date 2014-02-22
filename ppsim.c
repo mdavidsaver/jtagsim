@@ -82,6 +82,7 @@ static void ppsim_write_control(struct parport *dev, unsigned char d)
         spin_unlock(&pp->lock);
         return;
     }
+    d ^= 0x0b; // bits are hardware inverted
     tms = pp->tms; tck = pp->tck; tdi = pp->tdi;
     if(pp->cable->tms_ctrl)
         tms = pp->tms = !!(d & pp->cable->tms_ctrl);
@@ -127,6 +128,7 @@ static unsigned char ppsim_read_control(struct parport *dev)
     ret |= pp->tck ? pp->cable->tck_ctrl : 0;
     ret |= pp->tdi ? pp->cable->tdi_ctrl : 0;
     spin_unlock(&pp->lock);
+    ret ^= 0x0b; // bits are hardware inverted
     return ret;
 }
 
@@ -143,6 +145,7 @@ static unsigned char ppsim_read_status(struct parport *dev)
     ret = pp->tdo ? pp->cable->tdo_sts : 0;
     tdo = pp->tdo;
     spin_unlock(&pp->lock);
+    ret ^= 0x80; // BUSY line is hardware inverted
     if(pp->cable->tdo_sts)
         printk(KERN_INFO "ppsim sread(%02x) TDO=%d\n", (unsigned)ret, tdo);
     return ret;
