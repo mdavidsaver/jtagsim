@@ -22,15 +22,15 @@ static
 void jtag_sim(struct ppsdev *port)
 {
     int trace = 0;
-    static enum jtags state = jtag_reset;
-    enum jtags prev_state = state;
+    static enum jtags state = jtag_reset, prev_state = jtag_reset;
+    enum jtags cur_state = state;
     static int prev_tck = 0;
 
     static u64 hist_tms = 0, hist_tdo = 0, hist_tdi = 0;
 
     static const u32 myidcode = 0x89BEEF01;
 
-    static u16 IR = 0xffff;
+    static u16 IR = 0xf;
     static u8  DR_len = 1;
     static u32 DR_IDCODE;
     static u32 DR_BYPASS = 0; // only 1 bit used
@@ -91,10 +91,15 @@ void jtag_sim(struct ppsdev *port)
         break;
 
     case jtag_ir_shift:
+//        if(prev_state!=cur_state)
+//            printk("IR Shift");
         port->tdo = IR&1;
         IR >>= 1;
-        if(port->tdi) IR |= 0x8000;
+        if(port->tdi) IR |= 0x8;
+//        printk(" %d%d", port->tdi, port->tdo);
         if(port->tms==1) state=jtag_ir_exit1;
+//        if(state!=cur_state)
+//            printk("\n");
         break;
 
     case jtag_ir_exit1: if(port->tms==0) state=jtag_ir_pause; else state=jtag_ir_update; break;
@@ -105,7 +110,7 @@ void jtag_sim(struct ppsdev *port)
 
     case jtag_ir_update:
         switch(IR) {
-        case 0xffff: DR=&DR_BYPASS; *DR = 0; DR_len = 1; break;
+        case 0xf: DR=&DR_BYPASS; *DR = 0; DR_len = 1; break;
 
         case 4: DR=&DR_IDCODE; *DR = myidcode; DR_len = 32; break;
 
@@ -119,7 +124,7 @@ void jtag_sim(struct ppsdev *port)
         break;
     }
 
-    trace = prev_state != state;
+    trace = cur_state != state;
 
     hist_tms<<=1; hist_tdo<<=1; hist_tdi<<=1;
     if(port->tms) hist_tms |= 1;
@@ -127,8 +132,9 @@ void jtag_sim(struct ppsdev *port)
     if(port->tdo) hist_tdo |= 1;
     if(trace)
         printk(KERN_INFO "%2x -> %2x IR %04x DR %08x TMS %016llx TDI %016llx TDO %016llx\n",
-               (int)prev_state, (int)state, IR, *DR,
+               (int)cur_state, (int)state, IR, *DR,
                (unsigned long long) hist_tms,
                (unsigned long long) hist_tdi,
                (unsigned long long) hist_tdo);
+    prev_state = cur_state;
 }

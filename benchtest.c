@@ -5,7 +5,17 @@
  * gcc -o benchtest -g -Wall benchtest.c
  */
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
+
+#ifdef PPDEV
+#  include <stdarg.h>
+#  include <fcntl.h>
+#  include <unistd.h>
+#  include <sys/ioctl.h>
+#  include <linux/ioctl.h>
+#  include <linux/ppdev.h>
+#endif
 
 struct ppsdev {
     unsigned int tms:1;
@@ -23,8 +33,44 @@ typedef uint16_t u16;
 typedef uint32_t u32;
 typedef uint64_t u64;
 
-#include "jtag.c"
+#ifdef  PPDEV
+static char *ppname = NULL;
+static int ppfd = -1;
 
+static
+void die(const char *m, ...)
+{
+    va_list arg;
+    va_start(arg,m);
+    vprintf(m, arg);
+    va_end(arg);
+    exit(1);
+}
+
+// data
+#define TMS 1
+#define TCK 2
+#define TDI 3
+// status
+#define TDO 7
+
+static
+void jtag_sim(struct ppsdev *dev)
+{
+    unsigned char data = (dev->tms<<TMS) | (dev->tdi<<TDI) | (dev->tck<<TCK);
+    if(ppfd==-1) {
+        ppfd = open(ppname, O_RDWR);
+        if(ppfd==-1) die("Failed to open %s\n", ppname);
+        if(ioctl(ppfd, PPCLAIM)==-1) die("Failed to claim port\n");
+    }
+    if(ioctl(ppfd, PPWDATA, &data)==-1) die("Failed to write data\n");
+    if(ioctl(ppfd, PPRSTATUS, &data)==-1) die("Failed to read status\n");
+    dev->tdo = !(data&(1<<TDO)); // status is hardware inverted
+//    printf("<< %d%d%d\n>> %d\n", dev->tck, dev->tms, dev->tdi, dev->tdo);
+}
+#else
+#  include "jtag.c"
+#endif
 
 static
 void jtag_clock(int tms, int tdi, int N)
@@ -36,8 +82,8 @@ void jtag_clock(int tms, int tdi, int N)
         jtag_sim(pp);
         pp->tck = 1;
         jtag_sim(pp);
-        pp->tck = 0;
-        jtag_sim(pp);
+//        pp->tck = 0;
+//        jtag_sim(pp);
     }
 }
 
@@ -46,6 +92,11 @@ void jtag_clock(int tms, int tdi, int N)
 int main(int argc, char *argv[])
 {
     int n, irlen, ndev;
+
+#ifdef PPDEV
+    if(argc<2) die("Usage: %s /dev/parport#\n", argv[0]);
+    ppname = argv[1];
+#endif
 
     printf("Find IR length\n");
 
@@ -67,9 +118,9 @@ int main(int argc, char *argv[])
     }
     if(!pp->tdo && n>0) {
         irlen = n;
-        printf("IR length %d\n", irlen);
+        printf("\nIR length %d\n", irlen);
     } else {
-        printf("Error (%d)\n", n);
+        printf("\nError (%d)\n", n);
         return 1;
     }
 
@@ -99,6 +150,26 @@ int main(int argc, char *argv[])
     } else {
         printf("Found NO devices\n");
         return 1;
+    }
+
+    printf("Find device IDs\n");
+
+    jtag_clock(1, 0, 5); // reset again to reload IDCODE (assumed default IR)
+
+    // reset -> shift DR
+    jtag_clock(0, 0, 1);
+    jtag_clock(1, 0, 1);
+    jtag_clock(0, 0, 2);
+
+    for(n=0; n<ndev; n++) {
+        int b=32;
+        u32 id = 0;
+        while(b--) {
+            jtag_clock(0,1,1);
+            id >>= 1;
+            if(pp->tdo) id |= 1<<31;
+        }
+        printf(" %d %08x\n", n, id);
     }
 
     return 0;
