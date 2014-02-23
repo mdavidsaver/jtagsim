@@ -1,0 +1,25 @@
+Simulated JTAG cable and device
+
+ppsim.c - A Linux kernel module which provides a parallel (printer) port
+          which emulates a simple JTAG bit-banging programming cable.
+          Cable pinout allows use by Urjtag client.
+
+jtag.c - Simulates a JTAG chain with one device with a 4 bit IR length.
+
+benchtest.c - A test program which probes the simulated JTAG chain,
+              either directly, or through the simulated cable.
+
+
+Notes:
+
+I think jtag.c is implemented correectly, but Urjtag client over estimates
+register lengths by one.
+
+
+copyright/licensing
+
+All code is copyright Michael Davidsaver 2014
+
+ppsim.c is licensed under the GPL 2+ (see the file GPL)
+
+jtag.c and benchtest.c are licensed BSD (see the file BSD)
