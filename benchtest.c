@@ -68,9 +68,9 @@ void jtag_sim(struct ppsdev *dev)
     dev->tdo = !(data&(1<<TDO)); // status is hardware inverted
 //    printf("<< %d%d%d\n>> %d\n", dev->tck, dev->tms, dev->tdi, dev->tdo);
 }
-#else
+#else /* PPDEV */
 #  include "jtag.c"
-#endif
+#endif /* PPDEV */
 
 static
 void jtag_clock(int tms, int tdi, int N)

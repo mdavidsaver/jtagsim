@@ -10,7 +10,9 @@ CPPFLAGS_kernsim = -DPPDEV
 
 sim: benchsim kernsim
 
+benchsim: jtag.c
+
 benchsim kernsim: benchtest.c
-	gcc -o $@ -g -Wall $(CPPFLAGS_$@) $^
+	gcc -o $@ -g -Wall $(CPPFLAGS_$@) $<
 
 endif
